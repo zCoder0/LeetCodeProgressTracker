@@ -1,14 +1,8 @@
 [
     {
         "id": 1,
-        "title": "prem",
+        "title": "PremRaj",
         "difficulty": "EASY",
-        "topics": []
-    },
-    {
-        "id": 2,
-        "title": "Prem",
-        "difficulty": "HARD",
         "topics": []
     }
 ]

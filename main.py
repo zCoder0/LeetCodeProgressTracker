@@ -11,7 +11,6 @@ def get_topics():
             topics.append(topic)
     return topics
 
-
 if __name__ == "__main__":
     t = Tracker()
     menu_q = 0

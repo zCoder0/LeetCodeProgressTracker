@@ -23,6 +23,8 @@ def load_data(path):
             return []
         return json.loads(content)
     
+    except FileNotFoundError:
+        return []
     except Exception as e:
         raise ProjectException(e,sys)
   
@@ -30,7 +32,9 @@ class Tracker:
     
     def __init__(self):
         self.path = Settings.DATA_FILE_PATH
+        self.index_map_path=Settings.DATA_INDEX_MAP_PATH
         self.problems=load_data(self.path) or []
+        self.problems_index_map = load_data(self.index_map_path) or {}
         self.dificult ={
             "EASY",
             "MEDIUM",
@@ -81,25 +85,51 @@ class Tracker:
     def add_problems(self,**data):
         
         message =self.validation(**data)
-
         if message != True:
             return message
         
+        is_duplicate = self.duplication(data.get("id"))
+        if is_duplicate:
+            return "Duplicate value"
+        
         self.problems = load_data(self.path)  or []
         self.problems.append(data)
-        return save_data(self.path, self.problems)
+        self.problems_index_map.update({data.get("id"):len(self.problems)-1})
+        if save_data(self.path, self.problems) and save_data(self.index_map_path,self.problems_index_map):
+            return True
+        return False
     
     def delete_problem(self,id):
+        id=str(id)
         self.problems = load_data(self.path) or []
-        initial_len = len(self.problems)
-        if not self.problems:
+        self.problems_index_map = load_data(self.index_map_path) or {}
+        
+        if not self.problems and not self.problems_index_map:
             return False
         
-        self.problems = [p for p in self.problems if p.get('id') != id]
+        #0
+        idx = self.problems_index_map.get(id) or None 
+        if idx is None:
+            return False 
+        
+        del self.problems_index_map[id]
 
-        if len(self.problems) < initial_len:
-            return save_data(self.path, self.problems)
+        if idx == len(self.problems)-1:
+            if len(self.problems)<=1:
+                self.problems=[]
+            else:
+                self.problems = self.problems[:-1] or []
 
+            if save_data(self.path ,self.problems) and save_data(self.index_map_path , self.problems_index_map):
+                return True
+        
+        self.problems[idx] = self.problems[-1]
+        self.problems.pop(-1)
+        self.problems_index_map[str(self.problems[idx].get("id"))] = idx
+
+        if save_data(self.path ,self.problems) and save_data(self.index_map_path , self.problems_index_map):
+            return True
+        
         return False
     
     def update_problem(self,**data):
