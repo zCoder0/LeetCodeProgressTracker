@@ -2,14 +2,15 @@ name: Leetcode Problem CI
 
 on:
   workflow_dispatch:
-
+    branches:
+      - main
 
 jobs:
 
   test-case:
 
     name: Test Case
-    runs-on: ubuntu-latest
+    run-on: ubuntu-latest
 
     steps: 
       - name: Checkout Repository
