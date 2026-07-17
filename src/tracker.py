@@ -41,14 +41,7 @@ class Tracker:
             "HARD"
         }
     def duplication(self,id):
-
-        self.problems = load_data(self.path) or []
-
-        for problem in self.problems:
-            if problem.get('id') == id:
-                return True 
-    
-        return False
+        return str(id) in self.problems_index_map
     
     def validate_key(self,**data):
         wrong_key=[]
@@ -92,23 +85,19 @@ class Tracker:
         if is_duplicate:
             return "Duplicate value"
         
-        self.problems = load_data(self.path)  or []
         self.problems.append(data)
-        self.problems_index_map.update({data.get("id"):len(self.problems)-1})
+        self.problems_index_map.update({str(data.get("id")): len(self.problems)-1})
         if save_data(self.path, self.problems) and save_data(self.index_map_path,self.problems_index_map):
             return True
         return False
     
     def delete_problem(self,id):
         id=str(id)
-        self.problems = load_data(self.path) or []
-        self.problems_index_map = load_data(self.index_map_path) or {}
-        
+
         if not self.problems and not self.problems_index_map:
             return False
         
-        #0
-        idx = self.problems_index_map.get(id) or None 
+        idx = self.problems_index_map.get(id)
         if idx is None:
             return False 
         
@@ -118,10 +107,11 @@ class Tracker:
             if len(self.problems)<=1:
                 self.problems=[]
             else:
-                self.problems = self.problems[:-1] or []
+                self.problems = self.problems[:-1]
 
             if save_data(self.path ,self.problems) and save_data(self.index_map_path , self.problems_index_map):
                 return True
+            return False
         
         self.problems[idx] = self.problems[-1]
         self.problems.pop(-1)
@@ -133,15 +123,13 @@ class Tracker:
         return False
     
     def update_problem(self,**data):
-        wrong_key = self.validate_key(**data)
-        if wrong_key:
-            return f"wrong keys {wrong_key} in input data"
+        message = self.validation(**data)
+        if message != True:
+            return message
 
-        self.problems = load_data(self.path) or []
+        idx = self.problems_index_map.get(str(data.get('id')))
+        if idx is None:
+            return False
 
-        for problem in self.problems:
-            if problem.get('id') == data.get('id'):
-                problem.update(data)
-                return save_data(self.path, self.problems)
-        
-        return False
+        self.problems[idx].update(data)
+        return save_data(self.path, self.problems)
