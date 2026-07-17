@@ -1,0 +1,41 @@
+This is not just a CRUD project. If designed well, it becomes a project that demonstrates:
+
+Python fundamentals
+Data structures
+File handling
+OOP
+CLI development
+Statistics
+Markdown generation
+Testing
+GitHub Actions
+Software design
+
+
+
+ID : 1
+Title : Two Sum
+Difficulty : Easy
+
+Topics :
+Array
+Hash Table
+
+problems_structure:
+
+{
+    "problems":[
+       {
+        "problem":1,
+        "title":"Tow sum",
+        "difficult":"Easy",
+        "topics":["Array","Hash table"]
+       },
+        {
+        "problem":100,
+        "title":"Tow sum",
+        "difficult":"Easy",
+        "topics":["Array","Hash table"]
+       }
+    ]
+}

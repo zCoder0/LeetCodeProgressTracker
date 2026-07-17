@@ -1,0 +1,14 @@
+[
+    {
+        "id": 1,
+        "title": "prem",
+        "difficulty": "EASY",
+        "topics": []
+    },
+    {
+        "id": 2,
+        "title": "Prem",
+        "difficulty": "HARD",
+        "topics": []
+    }
+]
