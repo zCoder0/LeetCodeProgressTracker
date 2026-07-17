@@ -1,7 +1,7 @@
 name: Leetcode Problem CI
 
 on:
-  workflows_dispatched:
+  workflow_dispatch:
 
 
 jobs:
