@@ -4,16 +4,20 @@ from src.config import Settings
 import json
 
 
+def serialize(obj):
+    if isinstance(obj, set):
+        return list(obj)
+    return obj
+
 def save_data(path,data):
 
     try:
         with open(path, "w",encoding="utf-8") as f:
-            json.dump(data, f, ensure_ascii=False, indent=4)
+            json.dump(data, f, ensure_ascii=False, indent=4, default=serialize)
         return True
     except Exception as e:
         raise ProjectException(e,sys)
 
-  
 
 def load_data(path):
     try:
@@ -33,13 +37,22 @@ class Tracker:
     def __init__(self):
         self.path = Settings.DATA_FILE_PATH
         self.index_map_path=Settings.DATA_INDEX_MAP_PATH
+        self.difficult_grouping_path=Settings.DATA_DIFFICULT_GROUP_PATH
+        self.topic_grouping_path=Settings.DATA_TOPIC_GROUP_PATH
         self.problems=load_data(self.path) or []
         self.problems_index_map = load_data(self.index_map_path) or {}
-        self.dificult ={
+        self.difficult_grouping = load_data(self.difficult_grouping_path) or {}
+        self.topic_grouping = load_data(self.topic_grouping_path) or {}
+        for d in self.difficult_grouping:
+            self.difficult_grouping[d] = set(self.difficult_grouping[d])
+        for t in self.topic_grouping:
+            self.topic_grouping[t] = set(self.topic_grouping[t])
+        self.valid_difficulties ={
             "EASY",
             "MEDIUM",
             "HARD"
         }
+    
     def duplication(self,id):
         return str(id) in self.problems_index_map
     
@@ -54,7 +67,7 @@ class Tracker:
 
     def validate_values(self,**data):
         
-        if data.get("difficulty") not in self.dificult:
+        if data.get("difficulty") not in self.valid_difficulties:
             return "Wrong difficulty level"
         if not isinstance(data.get("id"), int):
             return "Id must be an integer"
@@ -87,7 +100,19 @@ class Tracker:
         
         self.problems.append(data)
         self.problems_index_map.update({str(data.get("id")): len(self.problems)-1})
-        if save_data(self.path, self.problems) and save_data(self.index_map_path,self.problems_index_map):
+        
+        difficaulty = data.get("difficulty")
+        topics = data.get("topics")
+
+        if difficaulty:
+            self._add_to_group(self.difficult_grouping, difficaulty, str(data.get("id")))
+
+        if topics:
+            for t in topics:
+                t = self._clean_text(t)
+                self._add_to_group(self.topic_grouping, t, str(data.get("id")))
+    
+        if self._save_all():
             return True
         return False
     
@@ -100,24 +125,33 @@ class Tracker:
         idx = self.problems_index_map.get(id)
         if idx is None:
             return False 
-        
+
         del self.problems_index_map[id]
 
+        if self.problems[idx].get("difficulty"):
+            self._remove_from_group(self.difficult_grouping, self.problems[idx].get("difficulty"), id)
+
+        if self.problems[idx].get('topics'):
+            for t in self.problems[idx].get('topics'):
+                print(t)
+                t = self._clean_text(t)
+                self._remove_from_group(self.topic_grouping, t, id)
+            
         if idx == len(self.problems)-1:
             if len(self.problems)<=1:
                 self.problems=[]
             else:
-                self.problems = self.problems[:-1]
+                self.problems.pop()
 
-            if save_data(self.path ,self.problems) and save_data(self.index_map_path , self.problems_index_map):
+            if self._save_all():
                 return True
             return False
         
         self.problems[idx] = self.problems[-1]
         self.problems.pop(-1)
         self.problems_index_map[str(self.problems[idx].get("id"))] = idx
-
-        if save_data(self.path ,self.problems) and save_data(self.index_map_path , self.problems_index_map):
+        
+        if self._save_all():
             return True
         
         return False
@@ -130,6 +164,50 @@ class Tracker:
         idx = self.problems_index_map.get(str(data.get('id')))
         if idx is None:
             return False
+        
+        old_difficulty = self.problems[idx].get('difficulty')
+        new_difficulty = data.get("difficulty")
+        if old_difficulty != new_difficulty:
+            self._remove_from_group(self.difficult_grouping, old_difficulty, str(data.get('id')))
+            self._add_to_group(self.difficult_grouping, new_difficulty, str(data.get('id')))
+
+        old_topic = set(self._clean_text(i) for i in self.problems[idx].get('topics') )
+        new_topic = set(self._clean_text(i) for i  in data.get('topics'))
+
+        for key in (new_topic - old_topic):
+            self._add_to_group(self.topic_grouping, key, str(data.get('id')))
+
+        for key in (old_topic - new_topic):
+            self._remove_from_group(self.topic_grouping, key, str(data.get('id')))
+            
 
         self.problems[idx].update(data)
-        return save_data(self.path, self.problems)
+        return save_data(self.path, self.problems) and save_data(self.difficult_grouping_path, self.difficult_grouping) and save_data(self.topic_grouping_path, self.topic_grouping)
+
+    def _add_to_group(self,group,key,id):
+
+        if key not in group:
+            group[key]=set()
+        group[key].add(id)
+    
+    def _remove_from_group(self, group, key, id):
+
+        if key not in group:
+            return
+        group[key].discard(id)
+        if not group[key]:
+            del group[key]
+
+    def _clean_text(self,text:str):
+        text = text.lower().strip()
+        text = text.replace(" ", "_")
+        text = text.replace("-", "_")
+        return text
+
+    def _save_all(self):
+        return(
+            save_data(self.path, self.problems) and
+            save_data(self.index_map_path, self.problems_index_map) and
+            save_data(self.difficult_grouping_path, self.difficult_grouping) and
+            save_data(self.topic_grouping_path, self.topic_grouping)
+        )

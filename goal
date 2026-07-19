@@ -39,3 +39,17 @@ problems_structure:
        }
     ]
 }
+
+
+Difficult={
+    "Array":{1,2,3,}
+    "Hashtable":{3,2,1}
+}
+
+
+
+topic={
+    "HARD":{1,2,3,}
+    "EASY":{3,2,1},
+    "MEDIUM":{3,2,1},
+}
