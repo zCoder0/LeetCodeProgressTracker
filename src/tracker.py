@@ -7,7 +7,7 @@ import json
 def serialize(obj):
     if isinstance(obj, set):
         return list(obj)
-    return obj
+    raise TypeError(f"Type {type(obj)} not serializable")
 
 def save_data(path,data):
 
@@ -211,3 +211,52 @@ class Tracker:
             save_data(self.difficult_grouping_path, self.difficult_grouping) and
             save_data(self.topic_grouping_path, self.topic_grouping)
         )
+
+
+
+class TrackerSearh:
+
+    def __init__(self):
+        self.difficulty_group = load_data(Settings.DATA_DIFFICULT_GROUP_PATH) or {}
+        self.topic_group = load_data(Settings.DATA_TOPIC_GROUP_PATH) or {}
+        self.problems = load_data(Settings.DATA_FILE_PATH) or []
+        self.problems_map = load_data(Settings.DATA_INDEX_MAP_PATH) or {}
+        for d in self.difficulty_group:
+            self.difficulty_group[d] = set(self.difficulty_group[d])
+        for t in self.topic_group:
+            self.topic_group[t] = set(self.topic_group[t])
+
+    def _clean_text(self,text:str):
+        text = text.lower().strip()
+        text = text.replace(" ", "_")
+        text = text.replace("-", "_")
+        return text
+
+    def search_by_id(self,id):
+        idx=self.problems_map.get(str(id)) 
+        return self.problems[idx] if idx is not None else None
+
+    def search_by_topic(self,topic:str):
+        topic = self._clean_text(topic)
+        return self.topic_group.get(topic)
+
+    def search_by_difficulty(self, difficulty:str):
+        difficulty = difficulty.upper()
+        return self.difficulty_group.get(difficulty)
+
+    def search(self,query):
+        result = set()
+
+        topic_ids = self.search_by_topic(query)
+        if topic_ids:
+            result |= topic_ids
+
+        difficulty_ids = self.search_by_difficulty(query)
+        if difficulty_ids:
+            result |= difficulty_ids
+
+        problem = self.search_by_id(query)
+        if problem:
+            return [problem]
+
+        return [self.search_by_id(i) for i in result]

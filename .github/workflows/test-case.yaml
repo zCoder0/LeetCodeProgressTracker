@@ -1,7 +1,8 @@
 name: Leetcode Problem CI
 
 on:
-  workflow_dispatch:
+  push:
+    branches: [ main ]
 
 jobs:
   test-case:

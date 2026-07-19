@@ -1,6 +1,6 @@
 import json
 import pytest
-from src.tracker import Tracker, save_data, load_data
+from src.tracker import Tracker, TrackerSearh, save_data, load_data
 
 
 @pytest.fixture
@@ -164,3 +164,71 @@ class TestValidation:
     def test_missing_id(self, tracker):
         result = tracker.add_problems(title="A", difficulty="EASY", topics=[])
         assert "Id must be an integer" in str(result)
+
+
+@pytest.fixture
+def searcher(tmp_path):
+    data_file = tmp_path / "problems.json"
+    index_file = tmp_path / "problems_map.json"
+    diff_file = tmp_path / "difficult_grouping.json"
+    topic_file = tmp_path / "topic_grouping.json"
+
+    problems = [
+        {"id": 1, "title": "Two Sum", "difficulty": "EASY", "topics": ["array", "hash"]},
+        {"id": 2, "title": "Three Sum", "difficulty": "MEDIUM", "topics": ["array", "two pointers"]},
+        {"id": 3, "title": "Hard Problem", "difficulty": "HARD", "topics": ["dp"]},
+    ]
+    problems_map = {"1": 0, "2": 1, "3": 2}
+    diff_group = {"EASY": ["1"], "MEDIUM": ["2"], "HARD": ["3"]}
+    topic_group = {"array": ["1", "2"], "hash": ["1"], "two_pointers": ["2"], "dp": ["3"]}
+
+    data_file.write_text(json.dumps(problems))
+    index_file.write_text(json.dumps(problems_map))
+    diff_file.write_text(json.dumps(diff_group))
+    topic_file.write_text(json.dumps(topic_group))
+
+    import src.config
+    orig = {}
+    for attr in ["DATA_FILE_PATH", "DATA_INDEX_MAP_PATH", "DATA_DIFFICULT_GROUP_PATH", "DATA_TOPIC_GROUP_PATH"]:
+        orig[attr] = getattr(src.config.Settings, attr)
+    src.config.Settings.DATA_FILE_PATH = str(data_file)
+    src.config.Settings.DATA_INDEX_MAP_PATH = str(index_file)
+    src.config.Settings.DATA_DIFFICULT_GROUP_PATH = str(diff_file)
+    src.config.Settings.DATA_TOPIC_GROUP_PATH = str(topic_file)
+
+    s = TrackerSearh()
+    yield s
+
+    for attr, val in orig.items():
+        setattr(src.config.Settings, attr, val)
+
+
+class TestSearch:
+    def test_search_by_difficulty(self, searcher):
+        result = searcher.search("easy")
+        assert len(result) == 1
+        assert result[0]["id"] == 1
+
+    def test_search_by_difficulty_case_insensitive(self, searcher):
+        result = searcher.search("EASY")
+        assert len(result) == 1
+        assert result[0]["id"] == 1
+
+    def test_search_by_topic(self, searcher):
+        result = searcher.search("array")
+        assert len(result) == 2
+        assert {p["id"] for p in result} == {1, 2}
+
+    def test_search_by_id(self, searcher):
+        result = searcher.search("1")
+        assert len(result) == 1
+        assert result[0]["id"] == 1
+
+    def test_search_no_match(self, searcher):
+        result = searcher.search("nonexistent")
+        assert result == []
+
+    def test_search_normalizes_topics(self, searcher):
+        result = searcher.search("two pointers")
+        assert len(result) == 1
+        assert result[0]["id"] == 2
